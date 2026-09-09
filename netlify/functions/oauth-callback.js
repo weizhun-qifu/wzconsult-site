@@ -180,15 +180,13 @@ exports.handler = async function (event) {
           openid.slice(-6)
         : "已成功获取";
 
-    return {
-      statusCode: 200,
-      headers: {
-        "Content-Type": "text/html; charset=utf-8",
+   headers: {
+  "Content-Type": "text/html; charset=utf-8",
 
-        // 清除 OAuth state
-        "Set-Cookie":
-          "wz_oauth_state=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax"
-      },
+  // 保存 OpenID 两小时，仅服务器可读取
+  "Set-Cookie":
+    `wz_openid=${encodeURIComponent(openid)}; Path=/; Max-Age=7200; HttpOnly; Secure; SameSite=Lax`
+},
 
       body: htmlPage(
         "微信授权成功",

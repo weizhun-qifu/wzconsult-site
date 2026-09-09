@@ -2,74 +2,459 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>为准企服支付测试</title>
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+  >
+
+  <title>为准企服｜微信支付测试</title>
 
   <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-                   "PingFang SC", "Microsoft YaHei", sans-serif;
-      margin: 0;
-      padding: 40px 24px;
-      background: #fff;
-      color: #111;
+    * {
+      box-sizing: border-box;
     }
 
-    .box {
-      max-width: 500px;
+    body {
+      margin: 0;
+      background: #f7f7f7;
+      color: #111;
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        "PingFang SC",
+        "Microsoft YaHei",
+        sans-serif;
+    }
+
+    .page {
+      max-width: 520px;
       margin: 0 auto;
+      padding: 48px 22px 80px;
+    }
+
+    .brand {
+      font-size: 15px;
+      font-weight: 600;
+      color: #b5121b;
+      margin-bottom: 36px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 18px;
+      padding: 30px 24px;
+      box-shadow:
+        0 8px 30px rgba(0,0,0,.05);
     }
 
     h1 {
-      font-size: 36px;
-      margin-top: 60px;
-      margin-bottom: 18px;
+      margin: 0 0 12px;
+      font-size: 28px;
     }
 
-    p {
-      font-size: 18px;
-      color: #555;
-      margin-bottom: 40px;
+    .sub {
+      color: #777;
+      line-height: 1.7;
+      font-size: 15px;
     }
 
-    .btn {
-      display: block;
+    .order {
+      margin-top: 30px;
+      padding: 20px 0;
+      border-top: 1px solid #eee;
+      border-bottom: 1px solid #eee;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      margin: 12px 0;
+      font-size: 16px;
+    }
+
+    .price {
+      color: #b5121b;
+      font-size: 28px;
+      font-weight: 700;
+    }
+
+    button {
       width: 100%;
-      box-sizing: border-box;
-      padding: 15px 20px;
-      border-radius: 8px;
       border: 0;
+      margin-top: 28px;
+      padding: 16px;
+      border-radius: 10px;
       background: #b5121b;
       color: #fff;
-      text-align: center;
-      text-decoration: none;
       font-size: 18px;
       font-weight: 600;
     }
 
-    .note {
-      margin-top: 20px;
+    button:disabled {
+      opacity: .5;
+    }
+
+    .auth {
+      background: #111;
+    }
+
+    .status {
+      margin-top: 22px;
+      padding: 14px;
+      border-radius: 8px;
+      background: #f5f5f5;
+      color: #555;
       font-size: 14px;
+      line-height: 1.7;
+      display: none;
+      word-break: break-all;
+    }
+
+    .tip {
+      margin-top: 28px;
       color: #999;
+      font-size: 13px;
       line-height: 1.7;
     }
   </style>
 </head>
 
 <body>
-  <div class="box">
-    <h1>为准企服</h1>
-    <p>微信授权与支付测试页</p>
 
-    <a class="btn"
-       href="/.netlify/functions/oauth-start">
-      开始微信授权测试
-    </a>
+<div class="page">
 
-    <div class="note">
-      本页面仅用于微信网页授权测试，
-      当前不会产生任何支付或扣款。
-    </div>
+  <div class="brand">
+    为准咨询 · WEIZHUN CONSULTING
   </div>
+
+  <div class="card">
+
+    <h1>微信支付测试</h1>
+
+    <div class="sub">
+      当前页面用于测试为准企服公众号
+      JSAPI 微信支付完整链路。
+    </div>
+
+    <div class="order">
+
+      <div class="row">
+        <span>测试项目</span>
+        <span>为准企服支付测试</span>
+      </div>
+
+      <div class="row">
+        <span>支付金额</span>
+        <span class="price">¥0.01</span>
+      </div>
+
+    </div>
+
+    <button
+      id="payButton"
+      onclick="startPay()"
+    >
+      微信支付 ¥0.01
+    </button>
+
+    <button
+      class="auth"
+      onclick="startAuth()"
+    >
+      重新获取微信授权
+    </button>
+
+    <div
+      id="status"
+      class="status"
+    ></div>
+
+    <div class="tip">
+      本页面仅用于支付功能联调。
+      正式上线后，服务名称与金额将由服务器根据服务编号自动确定。
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+
+const payButton =
+  document.getElementById("payButton");
+
+const statusBox =
+  document.getElementById("status");
+
+
+function showStatus(message) {
+
+  statusBox.style.display = "block";
+
+  statusBox.innerText = message;
+
+}
+
+
+function startAuth() {
+
+  window.location.href =
+    "/.netlify/functions/oauth-start";
+
+}
+
+
+/*
+  调用服务器创建微信支付订单
+*/
+async function startPay() {
+
+  if (
+    !navigator.userAgent
+      .toLowerCase()
+      .includes("micromessenger")
+  ) {
+
+    showStatus(
+      "请在微信内打开本页面进行支付测试。"
+    );
+
+    return;
+  }
+
+  payButton.disabled = true;
+
+  payButton.innerText =
+    "正在创建订单...";
+
+  showStatus(
+    "正在向微信支付创建测试订单..."
+  );
+
+  try {
+
+    const response =
+      await fetch(
+        "/.netlify/functions/create-order",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          credentials:
+            "same-origin",
+
+          body: JSON.stringify({
+            description:
+              "为准企服支付测试"
+          })
+        }
+      );
+
+
+    const data =
+      await response.json();
+
+
+    /*
+      没有 OpenID
+      自动重新走微信 OAuth
+    */
+    if (
+      response.status === 401 &&
+      data.needAuth
+    ) {
+
+      showStatus(
+        "正在获取微信用户授权..."
+      );
+
+      setTimeout(
+        startAuth,
+        600
+      );
+
+      return;
+    }
+
+
+    if (
+      !response.ok ||
+      !data.success
+    ) {
+
+      throw new Error(
+        data.message ||
+        JSON.stringify(data)
+      );
+
+    }
+
+
+    showStatus(
+      "订单创建成功，正在调起微信支付..."
+    );
+
+
+    invokeWechatPay(
+      data.payParams
+    );
+
+  }
+
+  catch (error) {
+
+    console.error(error);
+
+    showStatus(
+      "创建支付订单失败：\n" +
+      error.message
+    );
+
+    payButton.disabled = false;
+
+    payButton.innerText =
+      "重新支付 ¥0.01";
+
+  }
+
+}
+
+
+/*
+  调起微信官方收银台
+*/
+function invokeWechatPay(
+  payParams
+) {
+
+  const invoke = function () {
+
+    WeixinJSBridge.invoke(
+
+      "getBrandWCPayRequest",
+
+      {
+        appId:
+          payParams.appId,
+
+        timeStamp:
+          payParams.timeStamp,
+
+        nonceStr:
+          payParams.nonceStr,
+
+        package:
+          payParams.package,
+
+        signType:
+          payParams.signType,
+
+        paySign:
+          payParams.paySign
+      },
+
+      function (res) {
+
+        console.log(
+          "WeChat Pay Result:",
+          res
+        );
+
+
+        if (
+          res.err_msg ===
+          "get_brand_wcpay_request:ok"
+        ) {
+
+          showStatus(
+            "支付操作已完成。\n" +
+            "正在等待微信支付服务器确认到账结果。"
+          );
+
+          payButton.innerText =
+            "支付已完成";
+
+          /*
+            注意：
+            这里只代表前端支付流程完成。
+            最终是否到账，以 pay-notify
+            接收到微信支付成功通知为准。
+          */
+
+          return;
+        }
+
+
+        if (
+          res.err_msg ===
+          "get_brand_wcpay_request:cancel"
+        ) {
+
+          showStatus(
+            "你取消了本次支付。"
+          );
+
+          payButton.disabled =
+            false;
+
+          payButton.innerText =
+            "重新支付 ¥0.01";
+
+          return;
+        }
+
+
+        showStatus(
+          "微信支付未完成：\n" +
+          (
+            res.err_msg ||
+            "未知错误"
+          )
+        );
+
+        payButton.disabled =
+          false;
+
+        payButton.innerText =
+          "重新支付 ¥0.01";
+
+      }
+    );
+
+  };
+
+
+  /*
+    确保 WeixinJSBridge
+    已经准备完成
+  */
+  if (
+    typeof WeixinJSBridge ===
+    "undefined"
+  ) {
+
+    document.addEventListener(
+      "WeixinJSBridgeReady",
+      invoke,
+      false
+    );
+
+  }
+  else {
+
+    invoke();
+
+  }
+
+}
+
+</script>
+
 </body>
 </html>

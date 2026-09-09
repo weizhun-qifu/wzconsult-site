@@ -1,0 +1,1 @@
+Netlify最终部署版：解压后，将 weizhun-netlify-final 整个文件夹拖入 Netlify Deploys。根目录直接包含 index.html，无需 npm、Node.js 或构建。

@@ -1,0 +1,12 @@
+index_exists: PASS
+pricing_exists: PASS
+six_service_pages: PASS
+quote_buttons: PASS
+quote_json: PASS
+qr_embedded: PASS
+header_logo_embedded: PASS
+footer_has_no_filter_bug: PASS
+no_asset_path_dependencies: PASS
+no_missing_links: PASS
+HTML pages: 12
+Missing links: []

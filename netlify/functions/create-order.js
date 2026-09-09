@@ -167,11 +167,14 @@ exports.handler = async function (event) {
       {
         method: "POST",
 
-        headers: {
-          Authorization: authorization,
-          Accept: "application/json",
-          "Content-Type": "application/json"
-        },
+       headers: {
+  Authorization: authorization,
+  Accept: "application/json",
+  "Content-Type": "application/json",
+
+  "Wechatpay-Serial":
+    process.env.WX_PAY_PUBLIC_KEY_ID
+},
 
         body: bodyString
       }

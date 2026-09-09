@@ -14,22 +14,35 @@ function getCookie(cookieHeader, name) {
   return null;
 }
 
+
 function htmlPage(title, content) {
   return `
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1.0">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
 
   <title>${title}</title>
 
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont,
-                   "Segoe UI", "PingFang SC",
-                   "Microsoft YaHei", sans-serif;
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        "PingFang SC",
+        "Microsoft YaHei",
+        sans-serif;
+
       margin: 0;
       padding: 40px 24px;
       background: #fff;
@@ -84,120 +97,216 @@ function htmlPage(title, content) {
     ${content}
   </div>
 </body>
-</html>`;
+</html>
+  `;
 }
+
 
 exports.handler = async function (event) {
   try {
-    const code = event.queryStringParameters?.code;
-    const state = event.queryStringParameters?.state;
+    const code =
+      event.queryStringParameters?.code;
 
+    const state =
+      event.queryStringParameters?.state;
+
+
+    // 1. 检查微信回调参数
     if (!code || !state) {
       return {
         statusCode: 400,
+
         headers: {
-          "Content-Type": "text/html; charset=utf-8"
+          "Content-Type":
+            "text/html; charset=utf-8"
         },
+
         body: htmlPage(
           "授权失败",
           `
             <h1>微信授权失败</h1>
-            <p>没有收到微信返回的授权参数。</p>
-            <a href="/pay-test.html">重新测试</a>
+
+            <p>
+              没有收到微信返回的授权参数。
+            </p>
+
+            <a href="/pay-test.html">
+              返回测试页
+            </a>
           `
         )
       };
     }
 
-    // 校验 state
+
+    // 2. 校验 OAuth state
     const cookieState = getCookie(
-      event.headers.cookie || event.headers.Cookie,
+      event.headers.cookie ||
+      event.headers.Cookie,
       "wz_oauth_state"
     );
 
-    if (!cookieState || cookieState !== state) {
+
+    if (
+      !cookieState ||
+      cookieState !== state
+    ) {
       return {
         statusCode: 400,
+
         headers: {
-          "Content-Type": "text/html; charset=utf-8"
+          "Content-Type":
+            "text/html; charset=utf-8"
         },
+
         body: htmlPage(
           "安全校验失败",
           `
             <h1>授权安全校验失败</h1>
-            <p>state 参数不一致，请重新发起授权。</p>
-            <a href="/pay-test.html">重新测试</a>
+
+            <p>
+              state 参数不一致，
+              请重新发起微信授权。
+            </p>
+
+            <a href="/.netlify/functions/oauth-start">
+              重新授权
+            </a>
           `
         )
       };
     }
 
-    const appId = process.env.WX_APP_ID;
-    const appSecret = process.env.WX_APP_SECRET;
+
+    // 3. 获取公众号环境变量
+    const appId =
+      process.env.WX_APP_ID;
+
+    const appSecret =
+      process.env.WX_APP_SECRET;
+
 
     if (!appId || !appSecret) {
-      throw new Error("微信公众号环境变量未配置完整");
+      throw new Error(
+        "微信公众号环境变量未配置完整"
+      );
     }
 
+
+    // 4. 用 code 向微信换取 OpenID
     const tokenUrl =
       "https://api.weixin.qq.com/sns/oauth2/access_token" +
-      "?appid=" + encodeURIComponent(appId) +
-      "&secret=" + encodeURIComponent(appSecret) +
-      "&code=" + encodeURIComponent(code) +
+      "?appid=" +
+      encodeURIComponent(appId) +
+
+      "&secret=" +
+      encodeURIComponent(appSecret) +
+
+      "&code=" +
+      encodeURIComponent(code) +
+
       "&grant_type=authorization_code";
 
-    const response = await fetch(tokenUrl);
 
-    const data = await response.json();
+    const response =
+      await fetch(tokenUrl);
+
+
+    const data =
+      await response.json();
+
 
     if (data.errcode) {
-      console.error("WeChat OAuth error:", data);
+      console.error(
+        "WeChat OAuth error:",
+        data
+      );
 
       return {
         statusCode: 400,
+
         headers: {
-          "Content-Type": "text/html; charset=utf-8"
+          "Content-Type":
+            "text/html; charset=utf-8"
         },
+
         body: htmlPage(
           "微信授权失败",
           `
             <h1>微信授权失败</h1>
-            <p>错误码：${data.errcode}</p>
-            <p>${data.errmsg || "未知错误"}</p>
-            <a href="/pay-test.html">重新测试</a>
+
+            <p>
+              错误码：
+              ${data.errcode}
+            </p>
+
+            <p>
+              ${data.errmsg || "未知错误"}
+            </p>
+
+            <a href="/.netlify/functions/oauth-start">
+              重新授权
+            </a>
           `
         )
       };
     }
 
-    const openid = data.openid;
 
-    // 页面只展示脱敏后的 OpenID
+    // 5. 获取 OpenID
+    const openid =
+      data.openid;
+
+
+    if (!openid) {
+      throw new Error(
+        "微信未返回 OpenID"
+      );
+    }
+
+
+    // 页面只展示脱敏 OpenID
     const maskedOpenId =
       openid.length > 12
+
         ? openid.slice(0, 6) +
           "******" +
           openid.slice(-6)
+
         : "已成功获取";
 
-   headers: {
-  "Content-Type": "text/html; charset=utf-8",
 
-  // 保存 OpenID 两小时，仅服务器可读取
-  "Set-Cookie":
-    `wz_openid=${encodeURIComponent(openid)}; Path=/; Max-Age=7200; HttpOnly; Secure; SameSite=Lax`
-},
+    // 6. 保存 OpenID 到 HttpOnly Cookie
+    // 后面的 create-order.js 会自动读取
+    return {
+      statusCode: 200,
+
+      headers: {
+        "Content-Type":
+          "text/html; charset=utf-8",
+
+        "Cache-Control":
+          "no-store",
+
+        "Set-Cookie":
+          `wz_openid=${encodeURIComponent(openid)}; Path=/; Max-Age=7200; HttpOnly; Secure; SameSite=Lax`
+      },
 
       body: htmlPage(
         "微信授权成功",
         `
-          <div class="success">✓</div>
+          <div class="success">
+            ✓
+          </div>
 
-          <h1>微信授权成功</h1>
+          <h1>
+            微信授权成功
+          </h1>
 
           <p>
             为准企服已经成功识别当前微信用户，
-            JSAPI 支付所需的 OpenID 获取链路已经打通。
+            JSAPI 支付所需的 OpenID
+            获取链路已经打通。
           </p>
 
           <div class="openid">
@@ -205,25 +314,42 @@ exports.handler = async function (event) {
           </div>
 
           <a href="/pay-test.html">
-            返回测试页
+            返回支付测试页
           </a>
         `
       )
     };
+
+
   } catch (error) {
-    console.error("OAuth callback error:", error);
+    console.error(
+      "OAuth callback error:",
+      error
+    );
+
 
     return {
       statusCode: 500,
+
       headers: {
-        "Content-Type": "text/html; charset=utf-8"
+        "Content-Type":
+          "text/html; charset=utf-8"
       },
+
       body: htmlPage(
         "服务器错误",
         `
-          <h1>服务器处理失败</h1>
-          <p>${error.message}</p>
-          <a href="/pay-test.html">重新测试</a>
+          <h1>
+            服务器处理失败
+          </h1>
+
+          <p>
+            ${error.message}
+          </p>
+
+          <a href="/.netlify/functions/oauth-start">
+            重新授权
+          </a>
         `
       )
     };
